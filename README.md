@@ -768,13 +768,13 @@ eas submit --platform ios
   <br>
   <b>Votre Nom</b> - <i>Développeur Principal</i>
   <br><br>
-  <a href="https://github.com/votre-username">
+  <a href="https://github.com/NICE-DEV226">
     <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white">
   </a>
-  <a href="https://linkedin.com/in/votre-profile">
+  <a href="https://www.linkedin.com/in/aza%C3%ABl-wend-panga-sawadogo-8a4606259?utm_source=share&utm_campaign=share_via&utm_content=profile">
     <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white">
   </a>
-  <a href="mailto:votre@email.com">
+  <a href="mailto:nicedev226@gmail.com">
     <img src="https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white">
   </a>
 </div>
@@ -805,10 +805,10 @@ eas submit --platform ios
   
   Pour toute question ou problème :
   
-  <a href="https://github.com/votre-username/growup/issues">
+  <a href="https://github.com/NICE-DEV226/growup/issues">
     <img src="https://img.shields.io/badge/GitHub-Issues-red?style=for-the-badge&logo=github">
   </a>
-  <a href="mailto:support@growup.com">
+  <a href="mailto:nicedev226@gmail.com">
     <img src="https://img.shields.io/badge/Email-Support-blue?style=for-the-badge&logo=gmail">
   </a>
 </div>
