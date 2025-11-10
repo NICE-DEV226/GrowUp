@@ -1,0 +1,8 @@
+{
+  "email": "test@growup.com",
+  "password": "Test123456",
+  "name": "Test User",
+  "country": "France",
+  "currency": "EUR",
+  "language": "Français"
+}

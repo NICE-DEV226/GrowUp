@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "GrowUp",
+    "slug": "growup",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.growup.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
+        "NSCameraUsageDescription": "GrowUp a besoin d'accéder à votre caméra pour prendre une photo de profil.",
+        "NSPhotoLibraryUsageDescription": "GrowUp a besoin d'accéder à votre galerie pour choisir une photo de profil."
+      }
+    },
+    "android": {
+      "package": "com.growup.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#733fea"
+      },
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "notification": {
+      "color": "#733fea",
+      "androidMode": "default",
+      "androidCollapsedTitle": "GrowUp"
+    },
+    "web": {},
+    "scheme": "growup",
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
