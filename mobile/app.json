@@ -48,6 +48,11 @@
     "scheme": "growup",
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "127e3c4b-ff66-4038-837f-d39163708b91"
+      }
+    }
   }
 }
