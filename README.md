@@ -29,19 +29,7 @@ npm install
 npx expo start
 ```
 
-## Configuration Google OAuth
 
-### Backend (Google Cloud Console)
-1. Va sur https://console.cloud.google.com
-2. Crée un projet
-3. Active Google+ API
-4. Credentials → Create OAuth 2.0 Client ID
-5. Type: Web application
-6. Authorized redirect URIs: `http://localhost:4000/api/auth/google/callback`
-7. Copie Client ID et Client Secret dans `backend/.env`
-
-### Mobile
-Le mobile ouvre un WebView vers le backend pour l'auth Google.
 
 ## Structure MongoDB
 
@@ -84,3 +72,4 @@ GET  /api/auth/google
 GET  /api/auth/google/callback
 POST /api/auth/complete-profile
 ```
+## NO FORK PLEASE NICE-DEV
