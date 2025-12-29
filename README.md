@@ -12,9 +12,6 @@
 </p>
 
 
-
-Application mobile de gestion budgétaire virtuelle avec React Native + MongoDB.
-
 ## Stack Technique
 
 - **Mobile** : React Native (Expo SDK 54) + TypeScript
