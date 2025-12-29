@@ -1,6 +1,7 @@
 # GrowUp - Application Mobile de Gestion Budgétaire
 
-logo [mobile/assets/logo.png]
+![Logo](https://files.catbox.moe/owf7zi.png)
+
 
 Application mobile de gestion budgétaire virtuelle avec React Native + MongoDB.
 
