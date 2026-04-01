@@ -2,19 +2,21 @@ import { View, StyleSheet } from 'react-native';
 import { Text, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useI18n } from '../../src/i18n';
 
 export default function Slide2() {
   const router = useRouter();
+  const { t } = useI18n();
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
         <MaterialCommunityIcons name="target" size={120} color="#4CAF50" />
         <Text variant="headlineMedium" style={styles.title}>
-          Définissez vos objectifs
+          {t.onboarding.slide2Title}
         </Text>
         <Text variant="bodyLarge" style={styles.description}>
-          Créez des objectifs d'épargne et suivez votre progression en temps réel
+          {t.onboarding.slide2Subtitle}
         </Text>
       </View>
 
@@ -29,13 +31,13 @@ export default function Slide2() {
           onPress={() => router.push('/(onboarding)/slide3')}
           style={styles.button}
         >
-          Suivant
+          {t.onboarding.next}
         </Button>
         <Button 
           mode="text" 
           onPress={() => router.replace('/(auth)/login')}
         >
-          Passer
+          {t.onboarding.skip}
         </Button>
       </View>
     </View>

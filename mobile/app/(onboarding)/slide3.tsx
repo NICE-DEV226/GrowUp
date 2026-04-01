@@ -3,9 +3,11 @@ import { Text, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useI18n } from '../../src/i18n';
 
 export default function Slide3() {
   const router = useRouter();
+  const { t } = useI18n();
 
   const handleStart = async () => {
     await AsyncStorage.setItem('hasSeenOnboarding', 'true');
@@ -17,10 +19,10 @@ export default function Slide3() {
       <View style={styles.content}>
         <MaterialCommunityIcons name="chart-line" size={120} color="#4CAF50" />
         <Text variant="headlineMedium" style={styles.title}>
-          Analysez vos finances
+          {t.onboarding.slide3Title}
         </Text>
         <Text variant="bodyLarge" style={styles.description}>
-          Visualisez vos dépenses avec des graphiques détaillés et prenez de meilleures décisions
+          {t.onboarding.slide3Subtitle}
         </Text>
       </View>
 
@@ -35,7 +37,7 @@ export default function Slide3() {
           onPress={handleStart}
           style={styles.button}
         >
-          Commencer
+          {t.onboarding.getStarted}
         </Button>
       </View>
     </View>

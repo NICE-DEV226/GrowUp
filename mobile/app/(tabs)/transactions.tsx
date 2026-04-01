@@ -7,6 +7,13 @@ import { useRouter } from 'expo-router';
 import api from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { getCurrencySymbol } from '../../src/utils/currency';
+import { SwipeableTransactionCard } from '../../src/components/SwipeableTransactionCard';
+import { EmptyState } from '../../src/components/EmptyState';
+import { SkeletonList } from '../../src/components/SkeletonLoader';
+import { Toast } from '../../src/components/Toast';
+import { useToast } from '../../src/hooks/useToast';
+import { HapticButton } from '../../src/components/HapticButton';
+import { useI18n } from '../../src/i18n';
 
 const { height } = Dimensions.get('window');
 
@@ -103,7 +110,9 @@ const TransactionItem = ({ transaction, index, onPress, currencySymbol = '€' }
 
 export default function Transactions() {
   const { currency } = useAuthStore();
+  const { t } = useI18n();
   const currencySymbol = getCurrencySymbol(currency);
+  const { toast, showSuccess, showError, hideToast } = useToast();
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -295,7 +304,7 @@ export default function Transactions() {
 
       // Recharger les transactions
       await loadTransactions();
-      Alert.alert('Succès', 'Transaction créée avec succès');
+      showSuccess(t.toast.transactionCreated);
     } catch (error: any) {
       console.error('Erreur création transaction:', error);
       Alert.alert('Erreur', error.response?.data?.error || 'Impossible de créer la transaction');
@@ -306,12 +315,20 @@ export default function Transactions() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
+      {/* Toast notifications */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
+      
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.headerTitle}>Transactions</Text>
+          <Text style={styles.headerTitle}>{t.transactions.title}</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity 
+            <HapticButton 
               style={styles.addButton}
               onPress={() => setAddVisible(true)}
             >
@@ -320,8 +337,8 @@ export default function Transactions() {
                 size={24} 
                 color="#fff" 
               />
-            </TouchableOpacity>
-            <TouchableOpacity 
+            </HapticButton>
+            <HapticButton 
               style={styles.searchButton}
               onPress={() => setSearchVisible(!searchVisible)}
             >
@@ -330,7 +347,7 @@ export default function Transactions() {
                 size={24} 
                 color="#fdfdfd" 
               />
-            </TouchableOpacity>
+            </HapticButton>
           </View>
         </View>
 
@@ -339,7 +356,7 @@ export default function Transactions() {
             <MaterialCommunityIcons name="magnify" size={20} color="rgba(253, 253, 253, 0.5)" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Rechercher..."
+              placeholder={t.common.search + '...'}
               placeholderTextColor="rgba(253, 253, 253, 0.5)"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -363,7 +380,7 @@ export default function Transactions() {
               <MaterialCommunityIcons name="arrow-up" size={20} color="#10B981" />
             </View>
             <View style={styles.statInfo}>
-              <Text style={styles.statLabel}>Revenus</Text>
+              <Text style={styles.statLabel}>{t.dashboard.income}</Text>
               <Text style={styles.statValue}>{currencySymbol}{totalIncome.toFixed(2)}</Text>
             </View>
           </View>
@@ -373,7 +390,7 @@ export default function Transactions() {
               <MaterialCommunityIcons name="arrow-down" size={20} color="#F44336" />
             </View>
             <View style={styles.statInfo}>
-              <Text style={styles.statLabel}>Dépenses</Text>
+              <Text style={styles.statLabel}>{t.dashboard.expenses}</Text>
               <Text style={styles.statValue}>{currencySymbol}{totalExpense.toFixed(2)}</Text>
             </View>
           </View>
@@ -393,7 +410,7 @@ export default function Transactions() {
             onPress={() => setFilter('all')}
           >
             <Text style={filter === 'all' ? styles.filterTextActive : styles.filterText}>
-              Tout
+              {t.transactions.all}
             </Text>
           </TouchableOpacity>
 
@@ -407,7 +424,7 @@ export default function Transactions() {
               color={filter === 'income' ? '#fff' : 'rgba(253, 253, 253, 0.6)'} 
             />
             <Text style={filter === 'income' ? styles.filterTextActive : styles.filterText}>
-              Revenus
+              {t.transactions.income}
             </Text>
           </TouchableOpacity>
 
@@ -421,7 +438,7 @@ export default function Transactions() {
               color={filter === 'expense' ? '#fff' : 'rgba(253, 253, 253, 0.6)'} 
             />
             <Text style={filter === 'expense' ? styles.filterTextActive : styles.filterText}>
-              Dépenses
+              {t.transactions.expense}
             </Text>
           </TouchableOpacity>
         </Animated.View>
@@ -451,28 +468,54 @@ export default function Transactions() {
           }
         >
           {filteredTransactions.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <MaterialCommunityIcons name="receipt-text-outline" size={64} color="#733fea" />
-              </View>
-              <Text style={styles.emptyText}>Aucune transaction</Text>
-              <Text style={styles.emptySubtext}>
-                {searchQuery ? 'Aucun résultat pour votre recherche' : 'Commencez à ajouter vos transactions'}
-              </Text>
-            </View>
+            loading ? (
+              <SkeletonList count={5} />
+            ) : (
+              <EmptyState
+                icon="receipt-text-outline"
+                title={t.emptyStates.noTransactions.title}
+                subtitle={searchQuery ? t.emptyStates.noResults.subtitle : t.emptyStates.noTransactions.subtitle}
+                iconColor="#733fea"
+              />
+            )
           ) : (
-            <>
+            <View>
               {filteredTransactions.map((transaction, index) => (
-                <TransactionItem
-                  key={transaction.id}
+                <SwipeableTransactionCard
+                  key={transaction._id || transaction.id || `transaction-${index}`}
                   transaction={transaction}
-                  index={index}
-                  onPress={() => openDetails(transaction)}
                   currencySymbol={currencySymbol}
+                  onPress={() => openDetails(transaction)}
+                  onEdit={() => {
+                    setSelectedTransaction(transaction);
+                    openEdit();
+                  }}
+                  onDelete={async () => {
+                    Alert.alert(
+                      t.transactions.deleteConfirm.split('?')[0],
+                      t.transactions.deleteConfirm,
+                      [
+                        { text: t.common.cancel, style: 'cancel' },
+                        {
+                          text: t.common.delete,
+                          style: 'destructive',
+                          onPress: async () => {
+                            try {
+                              await api.delete(`/transactions/${transaction._id || transaction.id}`);
+                              await loadTransactions();
+                              showSuccess(t.toast.transactionDeleted);
+                            } catch (error) {
+                              showError(t.toast.error);
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
                 />
               ))}
               <View style={{ height: 100 }} />
-            </>
+            </View>
           )}
         </ScrollView>
       </Animated.View>
@@ -582,7 +625,7 @@ export default function Transactions() {
                 onPress={openEdit}
               >
                 <MaterialCommunityIcons name="pencil" size={20} color="#733fea" />
-                <Text style={styles.actionButtonText}>Modifier</Text>
+                <Text style={styles.actionButtonText}>{t.common.edit}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
@@ -594,7 +637,7 @@ export default function Transactions() {
                 }}
               >
                 <MaterialCommunityIcons name="delete" size={20} color="#F44336" />
-                <Text style={[styles.actionButtonText, styles.actionButtonTextDanger]}>Supprimer</Text>
+                <Text style={[styles.actionButtonText, styles.actionButtonTextDanger]}>{t.common.delete}</Text>
               </TouchableOpacity>
             </View>
 
@@ -602,7 +645,7 @@ export default function Transactions() {
               style={styles.closeButton}
               onPress={closeDetails}
             >
-              <Text style={styles.closeButtonText}>Fermer</Text>
+              <Text style={styles.closeButtonText}>{t.common.close}</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -635,7 +678,7 @@ export default function Transactions() {
             <View style={styles.modalHandle} />
             
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Modifier la transaction</Text>
+              <Text style={styles.modalTitle}>{t.transactions.editTransaction}</Text>
               <TouchableOpacity 
                 style={styles.modalCloseButton}
                 onPress={closeEdit}
@@ -825,7 +868,7 @@ export default function Transactions() {
                   style={[styles.textInput, styles.noteInput]}
                   value={editNote}
                   onChangeText={setEditNote}
-                  placeholder="Ajouter une note..."
+                  placeholder={t.transactions.enterNote}
                   placeholderTextColor="rgba(253, 253, 253, 0.4)"
                   multiline
                   numberOfLines={3}

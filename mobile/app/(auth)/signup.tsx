@@ -7,8 +7,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COUNTRIES, Country, REGIONS } from '../../src/constants/countries';
+import { useI18n } from '../../src/i18n';
 
 export default function Signup() {
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +25,7 @@ export default function Signup() {
 
   // Vérifier la correspondance des mots de passe en temps réel
   const passwordsMatch = password && confirmPassword && password === confirmPassword;
-  const passwordStrength = password.length >= 8 ? 'Fort' : password.length >= 6 ? 'Moyen' : password.length > 0 ? 'Faible' : '';
+  const passwordStrength = password.length >= 8 ? t.auth.passwordStrong : password.length >= 6 ? t.auth.passwordMedium : password.length > 0 ? t.auth.passwordWeak : '';
   const strengthColor = password.length >= 8 ? '#10B981' : password.length >= 6 ? '#FFC107' : '#ff6b6b';
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -59,27 +61,27 @@ export default function Signup() {
 
     // Validations
     if (!cleanName) {
-      setError('Veuillez entrer votre nom');
+      setError(t.auth.nameRequired);
       return;
     }
 
     if (!cleanEmail) {
-      setError('Veuillez entrer votre email');
+      setError(t.auth.emailRequired);
       return;
     }
 
     if (!selectedCountry) {
-      setError('Veuillez sélectionner votre pays');
+      setError(t.auth.countryRequired);
       return;
     }
 
     if (cleanPassword.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères');
+      setError(t.auth.passwordMinLength);
       return;
     }
 
     if (cleanPassword !== cleanConfirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+      setError(t.auth.passwordMismatch);
       return;
     }
 
@@ -102,7 +104,7 @@ export default function Signup() {
       
       router.replace('/(tabs)/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Une erreur est survenue');
+      setError(err.response?.data?.error || t.errors.generic);
     } finally {
       setLoading(false);
     }
@@ -127,8 +129,8 @@ export default function Signup() {
             <View style={styles.iconContainer}>
               <MaterialCommunityIcons name="account-plus" size={50} color="#fdfdfd" />
             </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Start your financial journey</Text>
+            <Text style={styles.title}>{t.auth.createAccount}</Text>
+            <Text style={styles.subtitle}>{t.auth.startJourney}</Text>
           </Animated.View>
 
           <Animated.View 
@@ -145,7 +147,7 @@ export default function Signup() {
               <TextInput
                 value={name}
                 onChangeText={setName}
-                placeholder="Full Name"
+                placeholder={t.auth.fullName}
                 placeholderTextColor="rgba(253, 253, 253, 0.5)"
                 style={styles.input}
                 mode="flat"
@@ -164,7 +166,7 @@ export default function Signup() {
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                placeholder="Email"
+                placeholder={t.auth.email}
                 placeholderTextColor="rgba(253, 253, 253, 0.5)"
                 style={styles.input}
                 mode="flat"
@@ -188,7 +190,7 @@ export default function Signup() {
                     <Text style={styles.countryText}>{selectedCountry.name}</Text>
                   </>
                 ) : (
-                  <Text style={styles.countryPlaceholder}>Sélectionner votre pays</Text>
+                  <Text style={styles.countryPlaceholder}>{t.auth.selectCountry}</Text>
                 )}
               </View>
               <MaterialCommunityIcons name="chevron-down" size={24} color="rgba(253, 253, 253, 0.5)" />
@@ -200,7 +202,7 @@ export default function Signup() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
-                placeholder="Password"
+                placeholder={t.auth.password}
                 placeholderTextColor="rgba(253, 253, 253, 0.5)"
                 style={styles.input}
                 mode="flat"
@@ -225,7 +227,7 @@ export default function Signup() {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirmPassword}
-                placeholder="Confirm Password"
+                placeholder={t.auth.confirmPassword}
                 placeholderTextColor="rgba(253, 253, 253, 0.5)"
                 style={styles.input}
                 mode="flat"
@@ -254,14 +256,14 @@ export default function Signup() {
                     color={password.length >= 6 ? "#10B981" : "#ff6b6b"} 
                   />
                   <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '500', color: password.length >= 6 ? "#10B981" : "#ff6b6b" }}>
-                    Au moins 6 caractères
+                    {t.auth.minCharacters}
                   </Text>
                 </View>
                 {passwordStrength && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                     <MaterialCommunityIcons name="shield-check" size={16} color={strengthColor} />
                     <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '500', color: strengthColor }}>
-                      Force: {passwordStrength}
+                      {t.auth.strength}: {passwordStrength}
                     </Text>
                   </View>
                 )}
@@ -277,7 +279,7 @@ export default function Signup() {
                     color={passwordsMatch ? "#10B981" : "#ff6b6b"} 
                   />
                   <Text style={{ marginLeft: 8, fontSize: 13, fontWeight: '500', color: passwordsMatch ? "#10B981" : "#ff6b6b" }}>
-                    {passwordsMatch ? "✓ Les mots de passe correspondent" : "✗ Les mots de passe ne correspondent pas"}
+                    {passwordsMatch ? t.auth.passwordsMatch : t.auth.passwordsDontMatch}
                   </Text>
                 </View>
               </View>
@@ -299,19 +301,19 @@ export default function Signup() {
               contentStyle={styles.buttonContent}
               labelStyle={styles.buttonLabel}
             >
-              Create Account
+              {t.auth.createAccount}
             </Button>
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
+              <Text style={styles.dividerText}>{t.common.or}</Text>
               <View style={styles.dividerLine} />
             </View>
             
             <View style={styles.loginContainer}>
-              <Text style={styles.loginText}>Already have an account? </Text>
+              <Text style={styles.loginText}>{t.auth.haveAccount} </Text>
               <TouchableOpacity onPress={() => router.back()}>
-                <Text style={styles.loginLink}>Sign In</Text>
+                <Text style={styles.loginLink}>{t.auth.signIn}</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -328,7 +330,7 @@ export default function Signup() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choisir votre pays</Text>
+              <Text style={styles.modalTitle}>{t.auth.chooseCountry}</Text>
               <TouchableOpacity 
                 onPress={() => setCountryModalVisible(false)}
                 style={styles.closeButton}

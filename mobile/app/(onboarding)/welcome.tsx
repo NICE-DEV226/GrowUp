@@ -5,35 +5,37 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useI18n } from '../../src/i18n';
 
 const { width, height } = Dimensions.get('window');
 
-const slides = [
-  {
-    icon: 'wallet-outline',
-    title: 'Track Your Spending',
-    description: 'Monitor all your expenses and income in one place with beautiful visualizations',
-    color: ['#733fea', '#98e0f8'] as const,
-  },
-  {
-    icon: 'target',
-    title: 'Set Financial Goals',
-    description: 'Create savings goals and track your progress towards achieving them',
-    color: ['#98e0f8', '#733fea'] as const,
-  },
-  {
-    icon: 'chart-line',
-    title: 'Smart Analytics',
-    description: 'Get insights into your spending habits with detailed reports and charts',
-    color: ['#733fea', '#1a1a1a'] as const,
-  },
-];
-
 export default function Welcome() {
   const router = useRouter();
+  const { t } = useI18n();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const slides = [
+    {
+      icon: 'wallet-outline',
+      title: t.onboarding.slide1Title,
+      description: t.onboarding.slide1Description,
+      color: ['#733fea', '#98e0f8'] as const,
+    },
+    {
+      icon: 'target',
+      title: t.onboarding.slide2Title,
+      description: t.onboarding.slide2Description,
+      color: ['#98e0f8', '#733fea'] as const,
+    },
+    {
+      icon: 'chart-line',
+      title: t.onboarding.slide3Title,
+      description: t.onboarding.slide3Description,
+      color: ['#733fea', '#1a1a1a'] as const,
+    },
+  ];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -125,11 +127,11 @@ export default function Welcome() {
           textColor="#733fea"
           contentStyle={styles.buttonContent}
         >
-          Get Started
+          {t.onboarding.getStarted}
         </Button>
 
         <TouchableOpacity onPress={handleGetStarted}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t.onboarding.skip}</Text>
         </TouchableOpacity>
       </View>
     </View>

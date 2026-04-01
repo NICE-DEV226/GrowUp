@@ -20,10 +20,15 @@ app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json());
 app.use(passport.initialize());
 
-// Rate limiting
+// Rate limiting - Configuration plus permissive pour le développement
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 500, // Augmenté de 100 à 500 requêtes
+  message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Skip rate limiting for health check
+  skip: (req) => req.path === '/api/health',
 });
 app.use('/api/', limiter);
 
@@ -40,6 +45,7 @@ app.use('/api/goals', require('./routes/goals'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/recurring', require('./routes/recurring'));
 
 // Error handler
 app.use((err, req, res, next) => {

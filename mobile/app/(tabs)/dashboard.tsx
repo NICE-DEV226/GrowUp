@@ -8,13 +8,24 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import api from '../../src/services/api';
 import { getCurrencySymbol } from '../../src/utils/currency';
+import { BankCard } from '../../src/components/BankCard';
+import { recurringService } from '../../src/services/recurringService';
+import { EmptyState } from '../../src/components/EmptyState';
+import { SkeletonCard, SkeletonList } from '../../src/components/SkeletonLoader';
+import { Toast } from '../../src/components/Toast';
+import { useToast } from '../../src/hooks/useToast';
+import { BottomSheet } from '../../src/components/BottomSheet';
+import { HapticButton } from '../../src/components/HapticButton';
+import { useI18n } from '../../src/i18n';
 
 const { width, height } = Dimensions.get('window');
 
 export default function Dashboard() {
   const { user, currency } = useAuthStore();
+  const { t } = useI18n();
   const router = useRouter();
   const currencySymbol = getCurrencySymbol(currency);
+  const { toast, showSuccess, showError, hideToast } = useToast();
   const [userName, setUserName] = useState('');
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [searchVisible, setSearchVisible] = useState(false);
@@ -37,6 +48,7 @@ export default function Dashboard() {
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [recentGoals, setRecentGoals] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [recurringTransactions, setRecurringTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const searchWidth = useRef(new Animated.Value(0)).current;
   const searchOpacity = useRef(new Animated.Value(0)).current;
@@ -62,6 +74,10 @@ export default function Dashboard() {
       setIncome(statsResponse.data.totalIncome || 0);
       setExpense(statsResponse.data.totalExpense || 0);
       setRecentTransactions(statsResponse.data.recentTransactions || []);
+      
+      // Charger les transactions récurrentes actives
+      const recurringResponse = await recurringService.getAll(true);
+      setRecurringTransactions(recurringResponse.recurring?.slice(0, 3) || []);
       
       // Si le solde est 0 et qu'il n'y a aucune transaction, proposer d'ajouter le solde initial
       if (currentBalance === 0 && transactionsCount === 0) {
@@ -268,7 +284,7 @@ export default function Dashboard() {
   const handleSaveInitialBalance = async () => {
     const amount = parseFloat(initialBalance);
     if (!initialBalance || isNaN(amount) || amount < 0) {
-      Alert.alert('Erreur', 'Veuillez entrer un montant valide');
+      showError('Veuillez entrer un montant valide');
       return;
     }
 
@@ -287,10 +303,10 @@ export default function Dashboard() {
       setInitialBalance('');
       await loadDashboardData();
       
-      Alert.alert('Succès', 'Votre solde initial a été ajouté !');
+      showSuccess('Votre solde initial a été ajouté !');
     } catch (error: any) {
       console.error('Erreur ajout solde initial:', error);
-      Alert.alert('Erreur', 'Impossible d\'ajouter le solde initial');
+      showError(t.errors.addBalanceFailed);
     }
   };
 
@@ -302,6 +318,14 @@ export default function Dashboard() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
+      
+      {/* Toast notifications */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
       
       {/* Header moderne */}
       <View style={styles.header}>
@@ -326,7 +350,7 @@ export default function Dashboard() {
                 </LinearGradient>
               </View>
               <View style={styles.userInfo}>
-                <Text style={styles.welcomeText}>Bienvenue</Text>
+                <Text style={styles.welcomeText}>{t.dashboard.welcome}</Text>
                 <Text style={styles.userName}>{userName}</Text>
               </View>
             </View>
@@ -345,7 +369,7 @@ export default function Dashboard() {
               <MaterialCommunityIcons name="magnify" size={20} color="rgba(253, 253, 253, 0.5)" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Rechercher des transactions..."
+                placeholder={t.dashboard.searchTransactions}
                 placeholderTextColor="rgba(253, 253, 253, 0.5)"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -406,62 +430,45 @@ export default function Dashboard() {
           />
         }
       >
-        {/* Carte de solde principale */}
+        {/* Carte bancaire moderne */}
         <Animated.View 
-          style={[
-            styles.balanceCardContainer,
-            {
-              transform: [{ scale: balanceScale }],
-            }
-          ]}
+          style={{
+            transform: [{ scale: balanceScale }],
+          }}
         >
-          <LinearGradient
-            colors={['#733fea', '#98e0f8']}
-            style={styles.balanceCard}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.balanceTop}>
-              <View style={styles.balanceLeft}>
-                <Text style={styles.balanceLabel}>Solde Total</Text>
-                <Text style={styles.balanceAmount}>
-                  {loading ? '...' : `${balance.toFixed(2).replace('.', ',')} ${currencySymbol}`}
-                </Text>
-              </View>
-              <View style={styles.walletIconContainer}>
-                <MaterialCommunityIcons name="wallet" size={28} color="#fff" />
-              </View>
-            </View>
-            
-            <View style={styles.balanceStats}>
-              <View style={styles.statItem}>
-                <View style={styles.statIconGreen}>
-                  <MaterialCommunityIcons name="arrow-up" size={16} color="#10B981" />
-                </View>
-                <View style={styles.statInfo}>
-                  <Text style={styles.statLabel}>Revenus</Text>
-                  <Text style={styles.statValue}>
-                    {loading ? '...' : `${income.toFixed(2).replace('.', ',')} ${currencySymbol}`}
-                  </Text>
-                </View>
-              </View>
-              
-              <View style={styles.statDivider} />
-              
-              <View style={styles.statItem}>
-                <View style={styles.statIconRed}>
-                  <MaterialCommunityIcons name="arrow-down" size={16} color="#F44336" />
-                </View>
-                <View style={styles.statInfo}>
-                  <Text style={styles.statLabel}>Dépenses</Text>
-                  <Text style={styles.statValue}>
-                    {loading ? '...' : `${expense.toFixed(2).replace('.', ',')} ${currencySymbol}`}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </LinearGradient>
+          <BankCard
+            balance={loading ? 0 : balance}
+            currency={currencySymbol}
+            accountName={t.dashboard.totalBalance}
+          />
         </Animated.View>
+
+        {/* Stats Revenus/Dépenses */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <View style={styles.statIconGreen}>
+              <MaterialCommunityIcons name="arrow-up" size={20} color="#10B981" />
+            </View>
+            <View style={styles.statContent}>
+              <Text style={styles.statLabel}>{t.dashboard.income}</Text>
+              <Text style={styles.statValue}>
+                {loading ? '...' : `${income.toFixed(2).replace('.', ',')} ${currencySymbol}`}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.statCard}>
+            <View style={styles.statIconRed}>
+              <MaterialCommunityIcons name="arrow-down" size={20} color="#F44336" />
+            </View>
+            <View style={styles.statContent}>
+              <Text style={styles.statLabel}>{t.dashboard.expenses}</Text>
+              <Text style={styles.statValue}>
+                {loading ? '...' : `${expense.toFixed(2).replace('.', ',')} ${currencySymbol}`}
+              </Text>
+            </View>
+          </View>
+        </View>
 
         {/* Actions rapides */}
         <Animated.View 
@@ -472,45 +479,45 @@ export default function Dashboard() {
             }
           ]}
         >
-          <TouchableOpacity 
+          <HapticButton 
             style={styles.quickAction}
             onPress={openAddTransaction}
           >
             <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(115, 63, 234, 0.15)' }]}>
               <MaterialCommunityIcons name="plus" size={24} color="#733fea" />
             </View>
-            <Text style={styles.quickActionText}>Ajouter</Text>
-          </TouchableOpacity>
+            <Text style={styles.quickActionText}>{t.dashboard.add}</Text>
+          </HapticButton>
 
-          <TouchableOpacity 
+          <HapticButton 
             style={styles.quickAction}
             onPress={() => router.push('/(tabs)/transactions')}
           >
             <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(152, 224, 248, 0.15)' }]}>
               <MaterialCommunityIcons name="swap-horizontal" size={24} color="#98e0f8" />
             </View>
-            <Text style={styles.quickActionText}>Transfert</Text>
-          </TouchableOpacity>
+            <Text style={styles.quickActionText}>{t.dashboard.transfer}</Text>
+          </HapticButton>
 
-          <TouchableOpacity 
+          <HapticButton 
             style={styles.quickAction}
             onPress={() => router.push('/(tabs)/stats')}
           >
             <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
               <MaterialCommunityIcons name="chart-bar" size={24} color="#10B981" />
             </View>
-            <Text style={styles.quickActionText}>Stats</Text>
-          </TouchableOpacity>
+            <Text style={styles.quickActionText}>{t.dashboard.stats}</Text>
+          </HapticButton>
 
-          <TouchableOpacity 
+          <HapticButton 
             style={styles.quickAction}
             onPress={() => router.push('/(tabs)/goals')}
           >
             <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(244, 67, 54, 0.15)' }]}>
               <MaterialCommunityIcons name="target" size={24} color="#F44336" />
             </View>
-            <Text style={styles.quickActionText}>Objectifs</Text>
-          </TouchableOpacity>
+            <Text style={styles.quickActionText}>{t.dashboard.goals}</Text>
+          </HapticButton>
         </Animated.View>
 
         {/* Transactions récentes */}
@@ -523,65 +530,125 @@ export default function Dashboard() {
           ]}
         >
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Transactions récentes</Text>
+            <Text style={styles.sectionTitle}>{t.dashboard.recentTransactions}</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/transactions')}>
-              <Text style={styles.seeAll}>Voir tout</Text>
+              <Text style={styles.seeAll}>{t.dashboard.seeAll}</Text>
             </TouchableOpacity>
           </View>
           
           {loading ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>Chargement...</Text>
-            </View>
+            <SkeletonList count={3} />
           ) : recentTransactions.length > 0 ? (
-            <View>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.transactionsScroll}
+            >
               {recentTransactions.map((transaction: any) => (
                 <TouchableOpacity 
                   key={transaction.id || transaction._id}
-                  style={styles.transactionItem}
+                  style={styles.transactionCard}
                   onPress={() => router.push('/(tabs)/transactions')}
                 >
-                  <View style={[
-                    styles.transactionIcon,
-                    { backgroundColor: transaction.type === 'income' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 67, 54, 0.15)' }
-                  ]}>
-                    <MaterialCommunityIcons 
-                      name={transaction.type === 'income' ? 'arrow-up' : 'arrow-down'} 
-                      size={20} 
-                      color={transaction.type === 'income' ? '#10B981' : '#F44336'} 
-                    />
-                  </View>
-                  <View style={styles.transactionInfo}>
-                    <Text style={styles.transactionCategory}>{transaction.category}</Text>
-                    <Text style={styles.transactionDate}>
-                      {new Date(transaction.date).toLocaleDateString('fr-FR')}
-                    </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={[
+                      styles.transactionIcon,
+                      { backgroundColor: transaction.type === 'income' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 67, 54, 0.15)' }
+                    ]}>
+                      <MaterialCommunityIcons 
+                        name={transaction.type === 'income' ? 'arrow-up' : 'arrow-down'} 
+                        size={20} 
+                        color={transaction.type === 'income' ? '#10B981' : '#F44336'} 
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.transactionCategory} numberOfLines={1}>{transaction.category}</Text>
+                      <Text style={styles.transactionDate}>
+                        {new Date(transaction.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      </Text>
+                    </View>
                   </View>
                   <Text style={[
                     styles.transactionAmount,
-                    { color: transaction.type === 'income' ? '#10B981' : '#F44336' }
+                    { color: transaction.type === 'income' ? '#10B981' : '#F44336', marginTop: 8 }
                   ]}>
-                    {transaction.type === 'income' ? '+' : '-'}{transaction.amount.toFixed(2).replace('.', ',')} {currencySymbol}
+                    {transaction.type === 'income' ? '+' : '-'}{transaction.amount.toFixed(0)} {currencySymbol}
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
           ) : (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <MaterialCommunityIcons name="receipt-text-outline" size={48} color="#733fea" />
-              </View>
-              <Text style={styles.emptyText}>Aucune transaction</Text>
-              <Text style={styles.emptySubtext}>Commencez à suivre vos dépenses</Text>
-              <TouchableOpacity 
-                style={styles.emptyButton}
-                onPress={openAddTransaction}
-              >
-                <Text style={styles.emptyButtonText}>Ajouter une transaction</Text>
-              </TouchableOpacity>
-            </View>
+            <EmptyState
+              icon="receipt-text-outline"
+              title={t.emptyStates.noTransactions.title}
+              subtitle={t.emptyStates.noTransactions.subtitle}
+              actionLabel={t.emptyStates.noTransactions.action}
+              onAction={openAddTransaction}
+            />
           )}
         </Animated.View>
+
+        {/* Transactions Récurrentes */}
+        {recurringTransactions.length > 0 && (
+          <Animated.View 
+            style={[
+              styles.section,
+              {
+                opacity: sectionsOpacity,
+              }
+            ]}
+          >
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t.recurring.title}</Text>
+              <TouchableOpacity onPress={() => router.push('/recurring-transactions')}>
+                <Text style={styles.seeAll}>{t.dashboard.seeAll}</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {recurringTransactions.map((recurring: any) => {
+              const getFrequencyText = (freq: string) => {
+                const map: any = {
+                  daily: t.recurring.daily,
+                  weekly: t.recurring.weekly,
+                  monthly: t.recurring.monthly,
+                  yearly: t.recurring.yearly,
+                };
+                return map[freq] || freq;
+              };
+
+              return (
+                <TouchableOpacity 
+                  key={recurring._id}
+                  style={styles.recurringItem}
+                  onPress={() => router.push('/recurring-transactions')}
+                >
+                  <View style={[
+                    styles.recurringIcon,
+                    { backgroundColor: recurring.type === 'income' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 67, 54, 0.15)' }
+                  ]}>
+                    <MaterialCommunityIcons 
+                      name={recurring.icon || (recurring.type === 'income' ? 'arrow-up' : 'arrow-down')} 
+                      size={20} 
+                      color={recurring.type === 'income' ? '#10B981' : '#F44336'} 
+                    />
+                  </View>
+                  <View style={styles.recurringInfo}>
+                    <Text style={styles.recurringCategory}>{recurring.category}</Text>
+                    <Text style={styles.recurringFrequency}>
+                      {getFrequencyText(recurring.frequency)} • {new Date(recurring.nextDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                    </Text>
+                  </View>
+                  <Text style={[
+                    styles.recurringAmount,
+                    { color: recurring.type === 'income' ? '#10B981' : '#F44336' }
+                  ]}>
+                    {recurring.type === 'income' ? '+' : '-'}{recurring.amount.toFixed(0)} {currencySymbol}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </Animated.View>
+        )}
 
         {/* Objectifs */}
         <Animated.View 
@@ -593,56 +660,53 @@ export default function Dashboard() {
           ]}
         >
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Mes objectifs</Text>
+            <Text style={styles.sectionTitle}>{t.dashboard.myGoals}</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/goals')}>
-              <Text style={styles.seeAll}>Voir tout</Text>
+              <Text style={styles.seeAll}>{t.dashboard.seeAll}</Text>
             </TouchableOpacity>
           </View>
           
           {loading ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>Chargement...</Text>
-            </View>
+            <SkeletonList count={2} />
           ) : recentGoals.length > 0 ? (
-            <View>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.goalsScroll}
+            >
               {recentGoals.map((goal: any) => {
                 const progress = (goal.currentAmount / goal.targetAmount) * 100;
                 return (
                   <TouchableOpacity 
                     key={goal.id || goal._id}
-                    style={styles.goalItem}
+                    style={styles.goalCard}
                     onPress={() => router.push('/(tabs)/goals')}
                   >
-                    <View style={[styles.goalIcon, { backgroundColor: `${goal.color}20` }]}>
-                      <MaterialCommunityIcons name={goal.icon || 'target'} size={24} color={goal.color || '#733fea'} />
-                    </View>
-                    <View style={styles.goalInfo}>
-                      <Text style={styles.goalTitle}>{goal.title}</Text>
-                      <View style={styles.goalProgressBar}>
-                        <View style={[styles.goalProgressFill, { width: `${Math.min(progress, 100)}%`, backgroundColor: goal.color || '#733fea' }]} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                      <View style={[styles.goalIcon, { backgroundColor: `${goal.color}20` }]}>
+                        <MaterialCommunityIcons name={goal.icon || 'target'} size={24} color={goal.color || '#733fea'} />
                       </View>
-                      <Text style={styles.goalAmount}>
-                        {goal.currentAmount.toFixed(0)} {currencySymbol} / {goal.targetAmount.toFixed(0)} {currencySymbol} ({progress.toFixed(0)}%)
-                      </Text>
+                      <Text style={styles.goalTitle} numberOfLines={1}>{goal.title}</Text>
                     </View>
+                    <View style={styles.goalProgressBar}>
+                      <View style={[styles.goalProgressFill, { width: `${Math.min(progress, 100)}%`, backgroundColor: goal.color || '#733fea' }]} />
+                    </View>
+                    <Text style={styles.goalAmount}>
+                      {progress.toFixed(0)}% • {goal.currentAmount.toFixed(0)} / {goal.targetAmount.toFixed(0)} {currencySymbol}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
           ) : (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <MaterialCommunityIcons name="flag-outline" size={48} color="#98e0f8" />
-              </View>
-              <Text style={styles.emptyText}>Aucun objectif</Text>
-              <Text style={styles.emptySubtext}>Définissez vos objectifs d'épargne</Text>
-              <TouchableOpacity 
-                style={styles.emptyButton}
-                onPress={() => router.push('/(tabs)/goals')}
-              >
-                <Text style={styles.emptyButtonText}>Créer un objectif</Text>
-              </TouchableOpacity>
-            </View>
+            <EmptyState
+              icon="flag-outline"
+              title={t.emptyStates.noGoals.title}
+              subtitle={t.emptyStates.noGoals.subtitle}
+              actionLabel={t.emptyStates.noGoals.action}
+              onAction={() => router.push('/(tabs)/goals')}
+              iconColor="#98e0f8"
+            />
           )}
         </Animated.View>
 
@@ -932,7 +996,7 @@ export default function Dashboard() {
                 <Text style={styles.formLabel}>Note (optionnel)</Text>
                 <TextInput
                   style={styles.noteInput}
-                  placeholder="Ajouter une note..."
+                  placeholder={t.dashboard.addNote}
                   placeholderTextColor="rgba(253, 253, 253, 0.4)"
                   multiline
                   numberOfLines={3}
@@ -1079,9 +1143,9 @@ export default function Dashboard() {
               <MaterialCommunityIcons name="wallet-plus" size={48} color="#733fea" />
             </View>
             
-            <Text style={styles.initialBalanceTitle}>Bienvenue ! 👋</Text>
+            <Text style={styles.initialBalanceTitle}>{t.dashboard.welcomeTitle}</Text>
             <Text style={styles.initialBalanceText}>
-              Pour commencer, ajoutez votre solde actuel. Cela nous aidera à suivre vos finances.
+              {t.dashboard.welcomeMessage}
             </Text>
             
             <View style={styles.initialBalanceInputContainer}>
@@ -1102,7 +1166,7 @@ export default function Dashboard() {
               style={styles.initialBalanceSaveButton}
               onPress={handleSaveInitialBalance}
             >
-              <Text style={styles.initialBalanceSaveText}>Ajouter mon solde</Text>
+              <Text style={styles.initialBalanceSaveText}>{t.dashboard.addBalance}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -1339,94 +1403,53 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  // Balance Card
-  balanceCardContainer: {
-    paddingHorizontal: 24,
-    marginTop: 20,
-    marginBottom: 24,
-  },
-  balanceCard: {
-    borderRadius: 24,
-    padding: 24,
-    shadowColor: '#733fea',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  balanceTop: {
+  // Stats Row (Revenus/Dépenses)
+  statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    paddingHorizontal: 16,
     marginBottom: 24,
+    gap: 12,
   },
-  balanceLeft: {
+  statCard: {
     flex: 1,
-  },
-  balanceLabel: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  balanceAmount: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  walletIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  balanceStats: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     padding: 16,
-  },
-  statItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   statIconGreen: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(16, 185, 129, 0.25)',
+    borderRadius: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
   statIconRed: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(244, 67, 54, 0.25)',
+    borderRadius: 12,
+    backgroundColor: 'rgba(244, 67, 54, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  statInfo: {
+  statContent: {
     flex: 1,
   },
   statLabel: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 2,
+    color: 'rgba(253, 253, 253, 0.6)',
+    marginBottom: 4,
   },
   statValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginHorizontal: 12,
+    color: '#fdfdfd',
   },
   // Quick Actions
   quickActionsSection: {
@@ -1756,6 +1779,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fdfdfd',
   },
+  transactionsScroll: {
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  transactionCard: {
+    width: 240,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
   transactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1788,6 +1823,18 @@ const styles = StyleSheet.create({
   transactionAmount: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  goalsScroll: {
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  goalCard: {
+    width: 240,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   goalItem: {
     flexDirection: 'row',
@@ -1828,6 +1875,42 @@ const styles = StyleSheet.create({
   goalAmount: {
     fontSize: 13,
     color: 'rgba(253, 253, 253, 0.6)',
+  },
+  // Recurring Transactions
+  recurringItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  recurringIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  recurringInfo: {
+    flex: 1,
+  },
+  recurringCategory: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fdfdfd',
+    marginBottom: 4,
+  },
+  recurringFrequency: {
+    fontSize: 12,
+    color: 'rgba(253, 253, 253, 0.5)',
+  },
+  recurringAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   // Modal Solde Initial
   initialBalanceModal: {

@@ -22,10 +22,12 @@ import { COUNTRIES, Country, getCountryByCode } from '../../src/constants/countr
 import api from '../../src/services/api';
 import * as ImagePicker from 'expo-image-picker';
 import { getCurrencySymbol } from '../../src/utils/currency';
+import { useI18n } from '../../src/i18n';
 
 export default function Profile() {
   const router = useRouter();
   const { user, logout, currency, language, theme, setCurrency, setLanguage, setTheme } = useAuthStore();
+  const { t } = useI18n(); // Hook i18n pour traductions instantanées
   const currencySymbol = getCurrencySymbol(currency);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
@@ -77,6 +79,11 @@ export default function Profile() {
     }, [])
   );
 
+  // Synchroniser selectedLanguage avec le store global
+  useEffect(() => {
+    setSelectedLanguage(language);
+  }, [language]);
+
   useEffect(() => {
     loadUserData();
     
@@ -112,21 +119,18 @@ export default function Profile() {
             setSelectedCountry(country);
             setSelectedCurrency(country.currency);
             setCurrency(country.currency); // Mettre à jour le store global
-            setSelectedLanguage(country.language);
-            setLanguage(country.language); // Mettre à jour le store global
+            // NE PAS écraser la langue - utiliser celle du store
+            setSelectedLanguage(language); // Utiliser la langue actuelle du store
           }
         }
       }
       
-      // Charger les stats depuis le backend
-      const statsResponse = await api.get('/stats/summary');
+      // Charger uniquement les stats de base depuis le dashboard endpoint
+      // qui est plus léger et ne charge pas toutes les transactions/goals
+      const statsResponse = await api.get('/stats/dashboard');
       setBalance(statsResponse.data.totalBalance || 0);
-      
-      const goalsResponse = await api.get('/goals');
-      setGoalsCount(goalsResponse.data.goals?.length || 0);
-      
-      const transactionsResponse = await api.get('/transactions?limit=1000');
-      setTransactionsCount(transactionsResponse.data.transactions?.length || 0);
+      setGoalsCount(statsResponse.data.recentGoals?.length || 0);
+      setTransactionsCount(statsResponse.data.recentTransactions?.length || 0);
       
     } catch (error) {
       console.error('Erreur chargement profil:', error);
@@ -459,20 +463,20 @@ export default function Profile() {
         <Animated.View style={[styles.content, { opacity: contentOpacity }]}>
           {/* Paramètres du compte */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Paramètres du compte</Text>
+            <Text style={styles.sectionTitle}>{t.profile.accountSettings}</Text>
             
             <MenuItem
               icon="account-edit"
-              title="Informations personnelles"
-              subtitle="Nom, email, photo"
+              title={t.profile.personalInfo}
+              subtitle={t.profile.personalInfoSubtitle}
               color="#733fea"
               onPress={() => setEditProfileVisible(true)}
             />
             
             <MenuItem
               icon="lock"
-              title="Sécurité"
-              subtitle="Mot de passe, authentification"
+              title={t.profile.security}
+              subtitle={t.profile.securitySubtitle}
               color="#F44336"
               onPress={() => Alert.alert(
                 'Sécurité',
@@ -486,7 +490,7 @@ export default function Profile() {
 
             <MenuItem
               icon="earth"
-              title="Pays"
+              title={t.profile.country}
               subtitle={selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : 'Non défini'}
               color="#98e0f8"
               onPress={() => setCountryModalVisible(true)}
@@ -494,7 +498,7 @@ export default function Profile() {
             
             <MenuItem
               icon={getCurrencyIcon(selectedCurrency)}
-              title="Devise"
+              title={t.profile.currency}
               subtitle={selectedCurrency}
               color="#FFC107"
               onPress={() => setCurrencyVisible(true)}
@@ -502,7 +506,7 @@ export default function Profile() {
             
             <MenuItem
               icon="translate"
-              title="Langue"
+              title={t.profile.language}
               subtitle={selectedLanguage}
               color="#10B981"
               onPress={() => setLanguageVisible(true)}
@@ -511,11 +515,11 @@ export default function Profile() {
 
           {/* Préférences */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Préférences</Text>
+            <Text style={styles.sectionTitle}>{t.profile.preferences}</Text>
             
             <MenuItem
               icon="theme-light-dark"
-              title="Thème"
+              title={t.profile.theme}
               subtitle={selectedTheme}
               color="#98e0f8"
               onPress={() => setThemeVisible(true)}
@@ -547,18 +551,18 @@ export default function Profile() {
 
           {/* Support */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Support & Informations</Text>
+            <Text style={styles.sectionTitle}>{t.profile.support}</Text>
             
             <MenuItem
               icon="help-circle"
-              title="Aide & Support"
+              title={t.profile.help}
               color="#733fea"
               onPress={() => Alert.alert('Aide & Support', 'Contactez-nous à :\n\nEmail: nicedev226@gmail.com\n\nNous vous répondrons dans les plus brefs délais.')}
             />
             
             <MenuItem
               icon="shield-check"
-              title="Confidentialité"
+              title={t.profile.privacy}
               color="#10B981"
               onPress={() => Alert.alert(
                 'Politique de confidentialité',
@@ -572,7 +576,7 @@ export default function Profile() {
             
             <MenuItem
               icon="file-document"
-              title="Conditions d'utilisation"
+              title={t.profile.terms}
               color="#98e0f8"
               onPress={() => Alert.alert(
                 'Conditions d\'utilisation',
@@ -587,8 +591,8 @@ export default function Profile() {
             
             <MenuItem
               icon="information"
-              title="À propos"
-              subtitle="Version 1.0.0"
+              title={t.profile.about}
+              subtitle={t.profile.aboutSubtitle}
               color="#FFC107"
               onPress={() => Alert.alert(
                 'GrowUp - Gestion Financière',
@@ -612,7 +616,7 @@ export default function Profile() {
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons name="logout" size={24} color="#F44336" />
-            <Text style={styles.logoutText}>Se déconnecter</Text>
+            <Text style={styles.logoutText}>{t.profile.logout}</Text>
           </TouchableOpacity>
 
           <View style={{ height: 100 }} />
@@ -628,13 +632,13 @@ export default function Profile() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Modifier le profil</Text>
+            <Text style={styles.modalTitle}>{t.profile.editProfile}</Text>
             
             <View style={styles.formSection}>
-              <Text style={styles.inputLabel}>Nom</Text>
+              <Text style={styles.inputLabel}>{t.profile.name}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Votre nom"
+                placeholder={t.profile.yourName}
                 placeholderTextColor="rgba(253, 253, 253, 0.4)"
                 value={editName}
                 onChangeText={setEditName}
@@ -642,13 +646,13 @@ export default function Profile() {
             </View>
             
             <View style={styles.formSection}>
-              <Text style={styles.inputLabel}>Email</Text>
+              <Text style={styles.inputLabel}>{t.profile.email}</Text>
               <TextInput
                 style={[styles.input, styles.inputDisabled]}
                 value={userEmail}
                 editable={false}
               />
-              <Text style={styles.inputHint}>L'email ne peut pas être modifié</Text>
+              <Text style={styles.inputHint}>{t.profile.emailHint}</Text>
             </View>
             
             <View style={styles.modalButtons}>
@@ -656,13 +660,13 @@ export default function Profile() {
                 style={styles.cancelButton}
                 onPress={() => setEditProfileVisible(false)}
               >
-                <Text style={styles.cancelButtonText}>Annuler</Text>
+                <Text style={styles.cancelButtonText}>{t.common.cancel}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.saveButton}
                 onPress={handleSaveProfile}
               >
-                <Text style={styles.saveButtonText}>Enregistrer</Text>
+                <Text style={styles.saveButtonText}>{t.common.save}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -678,7 +682,7 @@ export default function Profile() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Choisir la devise</Text>
+            <Text style={styles.modalTitle}>{t.profile.chooseCurrency}</Text>
             
             <ScrollView 
               style={styles.modalScrollView}
@@ -726,7 +730,7 @@ export default function Profile() {
               style={styles.closeButton}
               onPress={() => setCurrencyVisible(false)}
             >
-              <Text style={styles.closeButtonText}>Fermer</Text>
+              <Text style={styles.closeButtonText}>{t.profile.close}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -741,24 +745,23 @@ export default function Profile() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Choisir la langue</Text>
+            <Text style={styles.modalTitle}>{t.profile.chooseLanguage}</Text>
             
-            {['Français', 'English', 'Español'].map((language) => (
+            {['Français', 'English'].map((lang) => (
               <TouchableOpacity
-                key={language}
+                key={lang}
                 style={[
                   styles.optionItem,
-                  selectedLanguage === language && styles.optionItemActive
+                  selectedLanguage === lang && styles.optionItemActive
                 ]}
                 onPress={() => {
-                  setSelectedLanguage(language);
-                  setLanguage(language); // Sauvegarder dans le store global
+                  setSelectedLanguage(lang);
+                  setLanguage(lang); // Changement instantané via le store
                   setLanguageVisible(false);
-                  Alert.alert('Succès', `Langue changée en ${language}`);
                 }}
               >
-                <Text style={styles.optionText}>{language}</Text>
-                {selectedLanguage === language && (
+                <Text style={styles.optionText}>{lang}</Text>
+                {selectedLanguage === lang && (
                   <MaterialCommunityIcons name="check" size={24} color="#733fea" />
                 )}
               </TouchableOpacity>
@@ -768,7 +771,7 @@ export default function Profile() {
               style={styles.closeButton}
               onPress={() => setLanguageVisible(false)}
             >
-              <Text style={styles.closeButtonText}>Fermer</Text>
+              <Text style={styles.closeButtonText}>{t.profile.close}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -783,7 +786,7 @@ export default function Profile() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Choisir le thème</Text>
+            <Text style={styles.modalTitle}>{t.profile.chooseTheme}</Text>
             
             {(['Sombre', 'Clair', 'Automatique'] as const).map((theme) => (
               <TouchableOpacity
@@ -817,7 +820,7 @@ export default function Profile() {
               style={styles.closeButton}
               onPress={() => setThemeVisible(false)}
             >
-              <Text style={styles.closeButtonText}>Fermer</Text>
+              <Text style={styles.closeButtonText}>{t.profile.close}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -906,7 +909,7 @@ export default function Profile() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.photoModalHeader}>
-              <Text style={styles.modalTitle}>Choisir votre pays</Text>
+              <Text style={styles.modalTitle}>{t.profile.chooseCountry}</Text>
               <TouchableOpacity 
                 onPress={() => setCountryModalVisible(false)}
                 style={styles.closeIconButton}

@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../../src/theme';
 import api from '../../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useI18n } from '../../src/i18n';
 
 const currencies = ['EUR', 'USD', 'GBP', 'CAD', 'XAF', 'XOF'];
 const languages = [
@@ -15,6 +16,7 @@ const languages = [
 ];
 
 export default function CompleteProfile() {
+  const { t } = useI18n();
   const [username, setUsername] = useState('');
   const [currency, setCurrency] = useState('EUR');
   const [language, setLanguage] = useState('fr');
@@ -25,7 +27,7 @@ export default function CompleteProfile() {
 
   const handleComplete = async () => {
     if (!username.trim()) {
-      setError('Le nom d\'utilisateur est requis');
+      setError(t.auth.nameRequired);
       return;
     }
 
@@ -43,7 +45,7 @@ export default function CompleteProfile() {
       await AsyncStorage.setItem('profileCompleted', 'true');
       router.replace('/(tabs)/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Erreur lors de la configuration');
+      setError(err.response?.data?.error || t.errors.generic);
     } finally {
       setLoading(false);
     }
@@ -59,15 +61,15 @@ export default function CompleteProfile() {
           <View style={styles.iconContainer}>
             <MaterialCommunityIcons name="account-cog" size={50} color={colors.primary} />
           </View>
-          <Text variant="displaySmall" style={styles.title}>Finalisons votre profil</Text>
+          <Text variant="displaySmall" style={styles.title}>{t.auth.completeProfile}</Text>
           <Text variant="bodyLarge" style={styles.subtitle}>
-            Quelques informations pour personnaliser votre expérience
+            {t.auth.completeProfileSubtitle}
           </Text>
         </View>
 
         <View style={styles.form}>
           <TextInput
-            label="Nom d'utilisateur"
+            label={t.auth.username}
             value={username}
             onChangeText={setUsername}
             mode="outlined"
@@ -78,7 +80,7 @@ export default function CompleteProfile() {
             autoCapitalize="none"
           />
 
-          <Text style={styles.label}>Devise</Text>
+          <Text style={styles.label}>{t.profile.currency}</Text>
           <View style={styles.chipContainer}>
             {currencies.map((curr) => (
               <Button
@@ -93,7 +95,7 @@ export default function CompleteProfile() {
             ))}
           </View>
 
-          <Text style={styles.label}>Langue</Text>
+          <Text style={styles.label}>{t.profile.language}</Text>
           <View style={styles.chipContainer}>
             {languages.map((lang) => (
               <Button
@@ -109,7 +111,7 @@ export default function CompleteProfile() {
           </View>
 
           <TextInput
-            label="Pays (optionnel)"
+            label={t.auth.countryOptional}
             value={country}
             onChangeText={setCountry}
             mode="outlined"
@@ -134,7 +136,7 @@ export default function CompleteProfile() {
             buttonColor={colors.primary}
             contentStyle={styles.buttonContent}
           >
-            Commencer
+            {t.common.start}
           </Button>
         </View>
       </ScrollView>

@@ -19,6 +19,13 @@ import { useRouter } from 'expo-router';
 import api from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { getCurrencySymbol } from '../../src/utils/currency';
+import { EmptyState } from '../../src/components/EmptyState';
+import { SkeletonList } from '../../src/components/SkeletonLoader';
+import { Toast } from '../../src/components/Toast';
+import { useToast } from '../../src/hooks/useToast';
+import { HapticButton } from '../../src/components/HapticButton';
+import { AnimatedProgressRing } from '../../src/components/AnimatedProgressRing';
+import { useI18n } from '../../src/i18n';
 
 const { width, height } = Dimensions.get('window');
 
@@ -145,7 +152,9 @@ const GoalCard = ({ goal, index, onPress, currencySymbol = '€' }: { goal: Goal
 
 export default function Goals() {
   const { currency } = useAuthStore();
+  const { t } = useI18n();
   const currencySymbol = getCurrencySymbol(currency);
+  const { toast, showSuccess, showError, hideToast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
   const [addGoalVisible, setAddGoalVisible] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(false);
@@ -308,13 +317,13 @@ export default function Goals() {
 
   const handleUpdateGoal = () => {
     if (!goalTitle.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer un titre pour votre objectif');
+      Alert.alert(t.common.error, t.goals.enterTitle);
       return;
     }
 
     const amount = parseFloat(targetAmount);
     if (!targetAmount || isNaN(amount) || amount <= 0) {
-      Alert.alert('Erreur', 'Veuillez entrer un montant valide');
+      Alert.alert(t.common.error, t.goals.enterAmount);
       return;
     }
 
@@ -358,13 +367,13 @@ export default function Goals() {
 
   const handleSaveGoal = async () => {
     if (!goalTitle.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer un titre pour votre objectif');
+      Alert.alert(t.common.error, t.goals.enterTitle);
       return;
     }
 
     const amount = parseFloat(targetAmount);
     if (!targetAmount || isNaN(amount) || amount <= 0) {
-      Alert.alert('Erreur', 'Veuillez entrer un montant valide');
+      Alert.alert(t.common.error, t.goals.enterAmount);
       return;
     }
 
@@ -382,15 +391,16 @@ export default function Goals() {
       await loadGoals();
       
       setTimeout(() => {
-        Alert.alert(
-          '🎯 Objectif créé !', 
-          `Votre objectif "${goalTitle}" a été créé avec succès.`,
-          [{ text: 'Super !', style: 'default' }]
-        );
+        showSuccess(t.toast.goalCreated);
       }, 300);
     } catch (error: any) {
       console.error('Erreur création objectif:', error);
-      Alert.alert('Erreur', error.response?.data?.error || 'Impossible de créer l\'objectif');
+      
+      if (error.isRateLimit) {
+        showError(t.toast.rateLimitError);
+      } else {
+        showError(error.response?.data?.error || t.toast.error);
+      }
     }
   };
 
@@ -399,7 +409,7 @@ export default function Goals() {
 
     const amount = parseFloat(allocateAmount);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert('Erreur', 'Veuillez entrer un montant valide');
+      Alert.alert(t.common.error, t.goals.enterAmount);
       return;
     }
 
@@ -413,24 +423,21 @@ export default function Goals() {
       
       if (response.data.goal.isAchieved) {
         setTimeout(() => {
-          Alert.alert(
-            '🎉 Félicitations !',
-            `Vous avez atteint votre objectif "${selectedGoal.title}" !`,
-            [{ text: 'Génial !', style: 'default' }]
-          );
+          showSuccess(t.toast.goalAchieved);
         }, 300);
       } else {
         setTimeout(() => {
-          Alert.alert(
-            '✅ Allocation réussie',
-            `${amount}${currencySymbol} ont été alloués à "${selectedGoal.title}"`,
-            [{ text: 'OK', style: 'default' }]
-          );
+          showSuccess(t.toast.updated);
         }, 300);
       }
     } catch (error: any) {
       console.error('Erreur allocation:', error);
-      Alert.alert('Erreur', error.response?.data?.error || 'Impossible d\'allouer le montant');
+      
+      if (error.isRateLimit) {
+        showError(t.toast.rateLimitError);
+      } else {
+        showError(error.response?.data?.error || t.toast.error);
+      }
     }
   };
 
@@ -438,22 +445,27 @@ export default function Goals() {
     if (!selectedGoal) return;
     
     Alert.alert(
-      'Supprimer l\'objectif',
-      `Êtes-vous sûr de vouloir supprimer "${selectedGoal.title}" ?`,
+      t.goals.deleteConfirm.split('?')[0],
+      t.goals.deleteConfirm,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         { 
-          text: 'Supprimer', 
+          text: t.common.delete, 
           style: 'destructive',
           onPress: async () => {
             try {
               await api.delete(`/goals/${selectedGoal.id}`);
               closeDetails();
               await loadGoals();
-              Alert.alert('Succès', 'Objectif supprimé');
+              showSuccess(t.toast.goalDeleted);
             } catch (error: any) {
               console.error('Erreur suppression:', error);
-              Alert.alert('Erreur', 'Impossible de supprimer l\'objectif');
+              
+              if (error.isRateLimit) {
+                showError(t.toast.rateLimitError);
+              } else {
+                showError(t.toast.error);
+              }
             }
           }
         },
@@ -466,7 +478,7 @@ export default function Goals() {
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Pas de date limite';
+    if (!dateString) return t.goals.noDeadline;
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', { 
       day: 'numeric', 
@@ -506,20 +518,28 @@ export default function Goals() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
+      {/* Toast notifications */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
+      
       <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.headerTitle}>Mes Objectifs</Text>
+            <Text style={styles.headerTitle}>{t.goals.myGoals}</Text>
             <Text style={styles.headerSubtitle}>
-              {goals.length} objectif{goals.length > 1 ? 's' : ''} • {achievedGoals} atteint{achievedGoals > 1 ? 's' : ''}
+              {goals.length} {goals.length > 1 ? t.goals.title.toLowerCase() : t.goals.title.toLowerCase().slice(0, -1)} • {achievedGoals} {t.goals.achieved.toLowerCase()}{achievedGoals > 1 ? 's' : ''}
             </Text>
           </View>
-          <TouchableOpacity 
+          <HapticButton 
             style={styles.addButton}
             onPress={openAddGoal}
           >
             <MaterialCommunityIcons name="plus" size={24} color="#fdfdfd" />
-          </TouchableOpacity>
+          </HapticButton>
         </View>
       </Animated.View>
 
@@ -543,7 +563,7 @@ export default function Goals() {
               <MaterialCommunityIcons name="piggy-bank" size={20} color="#733fea" />
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Épargné</Text>
+              <Text style={styles.statLabel}>{t.goals.totalSaved}</Text>
               <Text style={styles.statValue}>{currencySymbol}{totalSaved.toFixed(2)}</Text>
             </View>
           </View>
@@ -553,7 +573,7 @@ export default function Goals() {
               <MaterialCommunityIcons name="target" size={20} color="#733fea" />
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Objectif total</Text>
+              <Text style={styles.statLabel}>{t.goals.totalTarget}</Text>
               <Text style={styles.statValue}>{currencySymbol}{totalTarget.toFixed(2)}</Text>
             </View>
           </View>
@@ -562,7 +582,7 @@ export default function Goals() {
         {goals.length > 0 && (
           <Animated.View style={[styles.globalProgressCard, { opacity: goalsOpacity }]}>
             <View style={styles.globalProgressHeader}>
-              <Text style={styles.globalProgressTitle}>Progression globale</Text>
+              <Text style={styles.globalProgressTitle}>{t.goals.globalProgress}</Text>
               <Text style={styles.globalProgressPercent}>{globalProgress.toFixed(0)}%</Text>
             </View>
             <View style={styles.progressBarContainer}>
@@ -578,23 +598,16 @@ export default function Goals() {
         )}
 
         <Animated.View style={[styles.goalsSection, { opacity: goalsOpacity }]}>
-          {goals.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <MaterialCommunityIcons name="target" size={64} color="#733fea" />
-              </View>
-              <Text style={styles.emptyText}>Aucun objectif</Text>
-              <Text style={styles.emptySubtext}>
-                Créez votre premier objectif d'épargne{'\n'}et commencez à réaliser vos rêves
-              </Text>
-              <TouchableOpacity 
-                style={styles.emptyButton}
-                onPress={openAddGoal}
-              >
-                <MaterialCommunityIcons name="plus" size={20} color="#fff" />
-                <Text style={styles.emptyButtonText}>Créer un objectif</Text>
-              </TouchableOpacity>
-            </View>
+          {loading ? (
+            <SkeletonList count={3} />
+          ) : goals.length === 0 ? (
+            <EmptyState
+              icon="target"
+              title={t.emptyStates.noGoals.title}
+              subtitle={t.emptyStates.noGoals.subtitle}
+              actionLabel={t.emptyStates.noGoals.action}
+              onAction={openAddGoal}
+            />
           ) : (
             goals.map((goal, index) => (
               <GoalCard
@@ -620,14 +633,14 @@ export default function Goals() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Nouvel Objectif</Text>
+            <Text style={styles.modalTitle}>{t.goals.addGoal}</Text>
             
             <ScrollView 
               style={styles.modalScrollView}
               showsVerticalScrollIndicator={false}
             >
               {/* Catégorie */}
-              <Text style={styles.inputLabel}>Catégorie</Text>
+              <Text style={styles.inputLabel}>{t.goals.category}</Text>
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false}
@@ -658,7 +671,7 @@ export default function Goals() {
               </ScrollView>
               
               {/* Titre */}
-              <Text style={styles.inputLabel}>Titre *</Text>
+              <Text style={styles.inputLabel}>{t.goals.goalTitle} *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Ex: Vacances d'été"
@@ -668,7 +681,7 @@ export default function Goals() {
               />
               
               {/* Montant */}
-              <Text style={styles.inputLabel}>Montant cible *</Text>
+              <Text style={styles.inputLabel}>{t.goals.targetAmount} *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Ex: 2000"
@@ -679,24 +692,24 @@ export default function Goals() {
               />
               
               {/* Date limite */}
-              <Text style={styles.inputLabel}>Date limite (optionnel)</Text>
+              <Text style={styles.inputLabel}>{t.goals.deadline} ({t.common.skip.toLowerCase()})</Text>
               <TouchableOpacity 
                 style={styles.dateButton}
                 onPress={() => setShowDatePicker(true)}
               >
                 <MaterialCommunityIcons name="calendar" size={20} color="#733fea" />
                 <Text style={styles.dateButtonText}>
-                  {selectedDate ? formatDate(selectedDate.toISOString()) : 'Sélectionner une date'}
+                  {selectedDate ? formatDate(selectedDate.toISOString()) : t.goals.selectDeadline}
                 </Text>
               </TouchableOpacity>
               {selectedDate && (
                 <TouchableOpacity onPress={() => setSelectedDate(null)}>
-                  <Text style={styles.clearDateText}>Supprimer la date</Text>
+                  <Text style={styles.clearDateText}>{t.common.delete} la date</Text>
                 </TouchableOpacity>
               )}
               
               {/* Couleur */}
-              <Text style={styles.inputLabel}>Couleur</Text>
+              <Text style={styles.inputLabel}>{t.goals.color}</Text>
               <View style={styles.colorGrid}>
                 {colors.map((color) => (
                   <TouchableOpacity
@@ -718,10 +731,10 @@ export default function Goals() {
             
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.cancelButton} onPress={closeAddGoal}>
-                <Text style={styles.cancelButtonText}>Annuler</Text>
+                <Text style={styles.cancelButtonText}>{t.common.cancel}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveGoal}>
-                <Text style={styles.saveButtonText}>Créer</Text>
+                <Text style={styles.saveButtonText}>{t.common.add}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -737,14 +750,14 @@ export default function Goals() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Modifier l'Objectif</Text>
+            <Text style={styles.modalTitle}>{t.goals.editGoal}</Text>
             
             <ScrollView 
               style={styles.modalScrollView}
               showsVerticalScrollIndicator={false}
             >
               {/* Catégorie */}
-              <Text style={styles.inputLabel}>Catégorie</Text>
+              <Text style={styles.inputLabel}>{t.goals.category}</Text>
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false}
@@ -775,7 +788,7 @@ export default function Goals() {
               </ScrollView>
               
               {/* Titre */}
-              <Text style={styles.inputLabel}>Titre *</Text>
+              <Text style={styles.inputLabel}>{t.goals.goalTitle} *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Ex: Vacances d'été"
@@ -785,7 +798,7 @@ export default function Goals() {
               />
               
               {/* Montant */}
-              <Text style={styles.inputLabel}>Montant cible *</Text>
+              <Text style={styles.inputLabel}>{t.goals.targetAmount} *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Ex: 2000"
@@ -796,24 +809,24 @@ export default function Goals() {
               />
               
               {/* Date limite */}
-              <Text style={styles.inputLabel}>Date limite (optionnel)</Text>
+              <Text style={styles.inputLabel}>{t.goals.deadline} ({t.common.skip.toLowerCase()})</Text>
               <TouchableOpacity 
                 style={styles.dateButton}
                 onPress={() => setShowDatePicker(true)}
               >
                 <MaterialCommunityIcons name="calendar" size={20} color="#733fea" />
                 <Text style={styles.dateButtonText}>
-                  {selectedDate ? formatDate(selectedDate.toISOString()) : 'Sélectionner une date'}
+                  {selectedDate ? formatDate(selectedDate.toISOString()) : t.goals.selectDeadline}
                 </Text>
               </TouchableOpacity>
               {selectedDate && (
                 <TouchableOpacity onPress={() => setSelectedDate(null)}>
-                  <Text style={styles.clearDateText}>Supprimer la date</Text>
+                  <Text style={styles.clearDateText}>{t.common.delete} la date</Text>
                 </TouchableOpacity>
               )}
               
               {/* Couleur */}
-              <Text style={styles.inputLabel}>Couleur</Text>
+              <Text style={styles.inputLabel}>{t.goals.color}</Text>
               <View style={styles.colorGrid}>
                 {colors.map((color) => (
                   <TouchableOpacity
@@ -835,10 +848,10 @@ export default function Goals() {
             
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.cancelButton} onPress={closeEdit}>
-                <Text style={styles.cancelButtonText}>Annuler</Text>
+                <Text style={styles.cancelButtonText}>{t.common.cancel}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveButton} onPress={handleUpdateGoal}>
-                <Text style={styles.saveButtonText}>Enregistrer</Text>
+                <Text style={styles.saveButtonText}>{t.common.save}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -859,17 +872,17 @@ export default function Goals() {
                 <Text style={styles.modalTitle}>{selectedGoal.title}</Text>
                 
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Épargné:</Text>
+                  <Text style={styles.detailLabel}>{t.goals.totalSaved}:</Text>
                   <Text style={styles.detailValue}>{selectedGoal.currentAmount.toFixed(0)} €</Text>
                 </View>
                 
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Objectif:</Text>
+                  <Text style={styles.detailLabel}>{t.goals.targetAmount}:</Text>
                   <Text style={styles.detailValue}>{selectedGoal.targetAmount.toFixed(0)} €</Text>
                 </View>
                 
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Restant:</Text>
+                  <Text style={styles.detailLabel}>{t.goals.remaining}:</Text>
                   <Text style={styles.detailValue}>
                     {(selectedGoal.targetAmount - selectedGoal.currentAmount).toFixed(0)} €
                   </Text>
@@ -890,21 +903,21 @@ export default function Goals() {
                 
                 {!selectedGoal.isAchieved && (
                   <TouchableOpacity style={styles.allocateBtn} onPress={openAllocate}>
-                    <Text style={styles.allocateBtnText}>Allouer de l'argent</Text>
+                    <Text style={styles.allocateBtnText}>{t.goals.allocateFunds}</Text>
                   </TouchableOpacity>
                 )}
                 
                 <TouchableOpacity style={styles.editBtn} onPress={openEdit}>
                   <MaterialCommunityIcons name="pencil" size={20} color="#fff" />
-                  <Text style={styles.editBtnText}>Modifier</Text>
+                  <Text style={styles.editBtnText}>{t.common.edit}</Text>
                 </TouchableOpacity>
                 
                 <View style={styles.modalButtons}>
                   <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteGoal}>
-                    <Text style={styles.deleteBtnText}>Supprimer</Text>
+                    <Text style={styles.deleteBtnText}>{t.common.delete}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.cancelButton} onPress={closeDetails}>
-                    <Text style={styles.cancelButtonText}>Fermer</Text>
+                    <Text style={styles.cancelButtonText}>{t.common.close}</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -922,7 +935,7 @@ export default function Goals() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Allouer de l'argent</Text>
+            <Text style={styles.modalTitle}>{t.goals.allocateFunds}</Text>
             
             {selectedGoal && (
               <>
@@ -930,7 +943,7 @@ export default function Goals() {
                 
                 <TextInput
                   style={styles.input}
-                  placeholder="Montant à allouer (€)"
+                  placeholder={t.goals.allocateAmount}
                   placeholderTextColor="rgba(253, 253, 253, 0.4)"
                   keyboardType="decimal-pad"
                   value={allocateAmount}
@@ -952,10 +965,10 @@ export default function Goals() {
                 
                 <View style={styles.modalButtons}>
                   <TouchableOpacity style={styles.cancelButton} onPress={closeAllocate}>
-                    <Text style={styles.cancelButtonText}>Annuler</Text>
+                    <Text style={styles.cancelButtonText}>{t.common.cancel}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.saveButton} onPress={handleAllocate}>
-                    <Text style={styles.saveButtonText}>Confirmer</Text>
+                    <Text style={styles.saveButtonText}>{t.common.confirm}</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -1064,7 +1077,7 @@ export default function Goals() {
               style={styles.calendarCloseButton}
               onPress={() => setShowDatePicker(false)}
             >
-              <Text style={styles.calendarCloseText}>Fermer</Text>
+              <Text style={styles.calendarCloseText}>{t.common.close}</Text>
             </TouchableOpacity>
           </View>
         </View>

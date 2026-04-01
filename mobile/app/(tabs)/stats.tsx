@@ -15,84 +15,84 @@ import { useState, useEffect, useRef } from 'react';
 import api from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { getCurrencySymbol } from '../../src/utils/currency';
+import { useI18n } from '../../src/i18n';
 
 const { width } = Dimensions.get('window');
 
-// Composant Graphique en Barres
-const BarChart = ({ data, title, color, currencySymbol = '€' }: any) => {
-  const maxValue = Math.max(...data.map((item: any) => item.value));
-  
+// Carte statistique moderne
+const StatCard = ({ icon, title, value, color, trend }: any) => {
   return (
-    <View style={styles.chartContainer}>
-      <Text style={styles.chartTitle}>{title}</Text>
-      <View style={styles.barsContainer}>
-        {data.map((item: any, index: number) => {
-          const barHeight = (item.value / maxValue) * 120;
-          return (
-            <View key={index} style={styles.barWrapper}>
-              <View style={styles.barContainer}>
-                <LinearGradient
-                  colors={[color, `${color}80`]}
-                  style={[styles.bar, { height: barHeight }]}
-                />
-              </View>
-              <Text style={styles.barLabel}>{item.label}</Text>
-              <Text style={styles.barValue}>{item.value}{currencySymbol}</Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-};
-
-// Composant Graphique Circulaire (Donut)
-const DonutChart = ({ data, title, currencySymbol = '€' }: any) => {
-  const total = data.reduce((sum: number, item: any) => sum + item.value, 0);
-  
-  return (
-    <View style={styles.donutContainer}>
-      <Text style={styles.chartTitle}>{title}</Text>
-      <View style={styles.donutWrapper}>
-        <View style={styles.donutChart}>
-          <View style={styles.donutCenter}>
-            <Text style={styles.donutTotal}>{total}{currencySymbol}</Text>
-            <Text style={styles.donutLabel}>Total</Text>
+    <View style={[styles.statCard, { borderLeftColor: color, borderLeftWidth: 4 }]}>
+      <View style={styles.statCardHeader}>
+        <View style={[styles.statIconContainer, { backgroundColor: `${color}20` }]}>
+          <MaterialCommunityIcons name={icon} size={24} color={color} />
+        </View>
+        {trend && (
+          <View style={[styles.trendBadge, { backgroundColor: trend > 0 ? '#10B98120' : '#F4433620' }]}>
+            <MaterialCommunityIcons 
+              name={trend > 0 ? 'trending-up' : 'trending-down'} 
+              size={14} 
+              color={trend > 0 ? '#10B981' : '#F44336'} 
+            />
+            <Text style={[styles.trendText, { color: trend > 0 ? '#10B981' : '#F44336' }]}>
+              {Math.abs(trend)}%
+            </Text>
           </View>
-        </View>
-        <View style={styles.donutLegend}>
-          {data.map((item: any, index: number) => (
-            <View key={index} style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: item.color }]} />
-              <Text style={styles.legendText}>{item.label}</Text>
-              <Text style={styles.legendValue}>{item.value}{currencySymbol}</Text>
-            </View>
-          ))}
-        </View>
+        )}
       </View>
+      <Text style={styles.statCardTitle}>{title}</Text>
+      <Text style={styles.statCardValue}>{value}</Text>
     </View>
   );
 };
 
-// Composant Graphique Linéaire
-const LineChart = ({ data, title, color }: any) => {
-  const maxValue = Math.max(...data.map((item: any) => item.value));
-  const minValue = Math.min(...data.map((item: any) => item.value));
+// Graphique en barres moderne
+const ModernBarChart = ({ data, color, currencySymbol }: any) => {
+  const maxValue = Math.max(...data.map((item: any) => item.value), 1);
   
   return (
-    <View style={styles.lineContainer}>
-      <Text style={styles.chartTitle}>{title}</Text>
-      <View style={styles.lineChart}>
-        <View style={styles.lineGrid}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <View key={i} style={styles.gridLine} />
-          ))}
+    <View style={styles.modernChart}>
+      {data.map((item: any, index: number) => {
+        const heightPercent = (item.value / maxValue) * 100;
+        return (
+          <View key={index} style={styles.modernBarWrapper}>
+            <View style={styles.modernBarContainer}>
+              <LinearGradient
+                colors={[color, `${color}60`]}
+                style={[styles.modernBar, { height: `${heightPercent}%` }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+              />
+            </View>
+            <Text style={styles.modernBarLabel}>{item.label}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+};
+
+// Carte catégorie avec barre de progression
+const CategoryCard = ({ category, amount, percentage, color, currencySymbol }: any) => {
+  return (
+    <View style={styles.categoryCard}>
+      <View style={styles.categoryHeader}>
+        <View style={[styles.categoryIcon, { backgroundColor: `${color}20` }]}>
+          <MaterialCommunityIcons name="tag" size={20} color={color} />
         </View>
-        <View style={styles.lineLabels}>
-          {data.map((item: any, index: number) => (
-            <Text key={index} style={styles.lineLabel}>{item.label}</Text>
-          ))}
+        <View style={styles.categoryInfo}>
+          <Text style={styles.categoryName}>{category}</Text>
+          <Text style={styles.categoryAmount}>{amount} {currencySymbol}</Text>
         </View>
+        <Text style={styles.categoryPercent}>{percentage}%</Text>
+      </View>
+      <View style={styles.categoryProgressBar}>
+        <LinearGradient
+          colors={[color, `${color}80`]}
+          style={[styles.categoryProgressFill, { width: `${percentage}%` }]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        />
       </View>
     </View>
   );
@@ -100,75 +100,66 @@ const LineChart = ({ data, title, color }: any) => {
 
 export default function Stats() {
   const { currency } = useAuthStore();
+  const { t } = useI18n();
   const currencySymbol = getCurrencySymbol(currency);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState('Mois');
-  const [selectedTab, setSelectedTab] = useState('Vue d\'ensemble');
+  const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [loading, setLoading] = useState(true);
   
-  // Données du backend
+  // Données
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
-  const [trendData, setTrendData] = useState<any[]>([]);
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
   const [savings, setSavings] = useState(0);
   
   // Animations
-  const headerOpacity = useRef(new Animated.Value(0)).current;
-  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Charger les statistiques depuis le backend
   const loadStats = async () => {
     try {
       setLoading(true);
-      
-      // Charger les transactions pour calculer les stats
       const transactionsResponse = await api.get('/transactions?limit=1000');
       const transactions = transactionsResponse.data.transactions || [];
       
       if (transactions.length === 0) {
         setMonthlyData([]);
         setCategoryData([]);
-        setTrendData([]);
         setTotalIncome(0);
         setTotalExpense(0);
         setSavings(0);
         return;
       }
       
-      // Filtrer les transactions selon la période sélectionnée
+      // Filtrer selon période
       const now = new Date();
       let filteredTransactions = transactions;
       
-      if (selectedPeriod === 'Semaine') {
+      if (selectedPeriod === 'week') {
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         filteredTransactions = transactions.filter((t: any) => new Date(t.date) >= weekAgo);
-      } else if (selectedPeriod === 'Mois') {
+      } else if (selectedPeriod === 'month') {
         const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
         filteredTransactions = transactions.filter((t: any) => new Date(t.date) >= monthAgo);
-      } else if (selectedPeriod === 'Année') {
+      } else if (selectedPeriod === 'year') {
         const yearAgo = new Date(now.getFullYear(), 0, 1);
         filteredTransactions = transactions.filter((t: any) => new Date(t.date) >= yearAgo);
       }
       
-      // Calculer le résumé
+      // Calculer totaux
       let income = 0;
       let expense = 0;
       
       filteredTransactions.forEach((t: any) => {
-        if (t.type === 'income') {
-          income += t.amount;
-        } else if (t.type === 'expense') {
-          expense += t.amount;
-        }
+        if (t.type === 'income') income += t.amount;
+        else if (t.type === 'expense') expense += t.amount;
       });
       
       setTotalIncome(income);
       setTotalExpense(expense);
       setSavings(income - expense);
       
-      // Calculer les données mensuelles (6 derniers mois)
+      // Données mensuelles
       const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
       const monthlyStats: any = {};
       
@@ -193,7 +184,7 @@ export default function Stats() {
       
       setMonthlyData(sortedMonthly);
       
-      // Calculer les dépenses par catégorie
+      // Catégories
       const categoryStats: any = {};
       const categoryColors: any = {
         'Nourriture': '#F44336',
@@ -215,43 +206,19 @@ export default function Stats() {
         }
       });
       
+      const totalCategoryExpense = Object.values(categoryStats).reduce((sum: number, val: any) => sum + val, 0);
+      
       const sortedCategories = Object.entries(categoryStats)
         .sort((a: any, b: any) => b[1] - a[1])
         .slice(0, 5)
         .map(([label, value]: any) => ({
-          label,
-          value: Math.round(value),
+          category: label,
+          amount: Math.round(value),
+          percentage: Math.round((value / totalCategoryExpense) * 100),
           color: categoryColors[label] || '#607D8B'
         }));
       
       setCategoryData(sortedCategories);
-      
-      // Calculer la tendance hebdomadaire (6 dernières semaines)
-      const weeklyStats: any = {};
-      
-      filteredTransactions.forEach((t: any) => {
-        const date = new Date(t.date);
-        const weekNumber = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
-        const weekKey = `${date.getFullYear()}-W${weekNumber}`;
-        
-        if (!weeklyStats[weekKey]) {
-          weeklyStats[weekKey] = { value: 0, date: date };
-        }
-        
-        if (t.type === 'expense') {
-          weeklyStats[weekKey].value += t.amount;
-        }
-      });
-      
-      const sortedWeekly = Object.values(weeklyStats)
-        .sort((a: any, b: any) => a.date - b.date)
-        .slice(-6)
-        .map((w: any, index: number) => ({
-          label: `S${index + 1}`,
-          value: Math.round(w.value)
-        }));
-      
-      setTrendData(sortedWeekly);
       
     } catch (error) {
       console.error('Erreur chargement stats:', error);
@@ -267,71 +234,57 @@ export default function Stats() {
   };
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(headerOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(contentOpacity, {
-        toValue: 1,
-        duration: 500,
-        delay: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
     
-    // Charger les stats au montage
     loadStats();
   }, []);
 
-  // Recharger quand la période change
   useEffect(() => {
     if (!loading) {
       loadStats();
     }
   }, [selectedPeriod]);
 
-  const periods = ['Semaine', 'Mois', 'Année'];
-  const tabs = ['Vue d\'ensemble', 'Revenus', 'Dépenses'];
+  const periods = [
+    { key: 'week', label: t.stats.periods.week },
+    { key: 'month', label: t.stats.periods.month },
+    { key: 'year', label: t.stats.periods.year }
+  ];
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
       {/* Header */}
-      <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerTitle}>Statistiques</Text>
-            <Text style={styles.headerSubtitle}>Analyse de vos finances</Text>
-          </View>
-          <TouchableOpacity style={styles.exportButton}>
-            <MaterialCommunityIcons name="download" size={24} color="#fdfdfd" />
-          </TouchableOpacity>
-        </View>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{t.stats.title}</Text>
+        <Text style={styles.headerSubtitle}>{t.stats.subtitle}</Text>
         
-        {/* Sélecteur de période */}
+        {/* Sélecteur période */}
         <View style={styles.periodSelector}>
           {periods.map((period) => (
             <TouchableOpacity
-              key={period}
+              key={period.key}
               style={[
                 styles.periodButton,
-                selectedPeriod === period && styles.periodButtonActive
+                selectedPeriod === period.key && styles.periodButtonActive
               ]}
-              onPress={() => setSelectedPeriod(period)}
+              onPress={() => setSelectedPeriod(period.key)}
             >
               <Text style={[
                 styles.periodText,
-                selectedPeriod === period && styles.periodTextActive
+                selectedPeriod === period.key && styles.periodTextActive
               ]}>
-                {period}
+                {period.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-      </Animated.View>
+      </View>
 
       <ScrollView 
         style={styles.scrollView}
@@ -342,189 +295,75 @@ export default function Stats() {
             onRefresh={onRefresh}
             tintColor="#733fea"
             colors={['#733fea']}
-            progressBackgroundColor="#2a2a2a"
           />
         }
       >
-        <Animated.View style={[styles.content, { opacity: contentOpacity }]}>
-          {/* Résumé financier */}
-          <View style={styles.summaryContainer}>
-            <LinearGradient
-              colors={['#733fea', '#98e0f8']}
-              style={styles.summaryCard}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.summaryHeader}>
-                <MaterialCommunityIcons name="chart-line" size={32} color="#fff" />
-                <Text style={styles.summaryTitle}>
-                  Résumé {selectedPeriod === 'Semaine' ? 'de la semaine' : selectedPeriod === 'Mois' ? 'du mois' : 'de l\'année'}
-                </Text>
-              </View>
-              
-              <View style={styles.summaryStats}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Revenus</Text>
-                  <Text style={styles.summaryValue}>
-                    {loading ? '...' : `+${totalIncome.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${currencySymbol}`}
-                  </Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Dépenses</Text>
-                  <Text style={styles.summaryValue}>
-                    {loading ? '...' : `-${totalExpense.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${currencySymbol}`}
-                  </Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Économies</Text>
-                  <Text style={[styles.summaryValue, { color: savings >= 0 ? '#10B981' : '#F44336' }]}>
-                    {loading ? '...' : `${savings >= 0 ? '+' : ''}${savings.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${currencySymbol}`}
-                  </Text>
-                </View>
-              </View>
-            </LinearGradient>
+        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+          {/* Cartes statistiques */}
+          <View style={styles.statsGrid}>
+            <StatCard
+              icon="cash-multiple"
+              title={t.stats.income}
+              value={`+${totalIncome.toFixed(0)} ${currencySymbol}`}
+              color="#10B981"
+              trend={12}
+            />
+            <StatCard
+              icon="credit-card-outline"
+              title={t.stats.expenses}
+              value={`-${totalExpense.toFixed(0)} ${currencySymbol}`}
+              color="#F44336"
+              trend={-8}
+            />
+            <StatCard
+              icon="piggy-bank"
+              title={t.stats.savings}
+              value={`${savings >= 0 ? '+' : ''}${savings.toFixed(0)} ${currencySymbol}`}
+              color={savings >= 0 ? '#733fea' : '#F44336'}
+            />
           </View>
 
-          {/* Onglets */}
-          <View style={styles.tabsContainer}>
-            {tabs.map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                style={[
-                  styles.tab,
-                  selectedTab === tab && styles.tabActive
-                ]}
-                onPress={() => setSelectedTab(tab)}
-              >
-                <Text style={[
-                  styles.tabText,
-                  selectedTab === tab && styles.tabTextActive
-                ]}>
-                  {tab}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {/* Graphique évolution */}
+          {monthlyData.length > 0 && (
+            <View style={styles.chartCard}>
+              <Text style={styles.chartCardTitle}>{t.stats.expensesEvolution}</Text>
+              <ModernBarChart 
+                data={monthlyData} 
+                color="#733fea"
+                currencySymbol={currencySymbol}
+              />
+            </View>
+          )}
 
-          {/* Graphiques */}
-          <View style={styles.chartsContainer}>
-            {selectedTab === 'Vue d\'ensemble' && (
-              <>
-                {loading ? (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>Chargement...</Text>
-                  </View>
-                ) : monthlyData.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <MaterialCommunityIcons name="chart-line" size={64} color="rgba(253, 253, 253, 0.3)" />
-                    <Text style={styles.emptyText}>Aucune donnée</Text>
-                    <Text style={styles.emptySubtext}>
-                      Ajoutez des transactions pour voir vos statistiques
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    <BarChart 
-                      data={monthlyData} 
-                      title="Évolution mensuelle" 
-                      color="#733fea"
-                      currencySymbol={currencySymbol}
-                    />
-                    
-                    <DonutChart 
-                      data={categoryData} 
-                      title="Dépenses par catégorie"
-                      currencySymbol={currencySymbol}
-                    />
-                    
-                    <LineChart 
-                      data={trendData} 
-                      title="Tendance hebdomadaire" 
-                      color="#98e0f8" 
-                    />
-                  </>
-                )}
-              </>
-            )}
-            
-            {selectedTab === 'Revenus' && (
-              <>
-                {loading ? (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>Chargement...</Text>
-                  </View>
-                ) : monthlyData.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <MaterialCommunityIcons name="cash-multiple" size={64} color="rgba(16, 185, 129, 0.3)" />
-                    <Text style={styles.emptyText}>Aucun revenu</Text>
-                    <Text style={styles.emptySubtext}>
-                      Ajoutez des transactions de type revenu
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    <BarChart 
-                      data={monthlyData} 
-                      title="Évolution des revenus" 
-                      color="#10B981"
-                      currencySymbol={currencySymbol}
-                    />
-                    
-                    <View style={styles.statCard}>
-                      <Text style={styles.statCardTitle}>Total des revenus</Text>
-                      <Text style={[styles.statCardValue, { color: '#10B981' }]}>
-                        +{totalIncome.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}{currencySymbol}
-                      </Text>
-                    </View>
-                  </>
-                )}
-              </>
-            )}
-            
-            {selectedTab === 'Dépenses' && (
-              <>
-                {loading ? (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>Chargement...</Text>
-                  </View>
-                ) : categoryData.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <MaterialCommunityIcons name="credit-card-outline" size={64} color="rgba(244, 67, 54, 0.3)" />
-                    <Text style={styles.emptyText}>Aucune dépense</Text>
-                    <Text style={styles.emptySubtext}>
-                      Ajoutez des transactions de type dépense
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    <DonutChart 
-                      data={categoryData} 
-                      title="Répartition des dépenses"
-                      currencySymbol={currencySymbol}
-                    />
-                    
-                    <BarChart 
-                      data={monthlyData} 
-                      title="Évolution des dépenses" 
-                      color="#F44336"
-                      currencySymbol={currencySymbol}
-                    />
-                    
-                    <View style={styles.statCard}>
-                      <Text style={styles.statCardTitle}>Total des dépenses</Text>
-                      <Text style={[styles.statCardValue, { color: '#F44336' }]}>
-                        -{totalExpense.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}{currencySymbol}
-                      </Text>
-                    </View>
-                  </>
-                )}
-              </>
-            )}
-          </View>
+          {/* Dépenses par catégorie */}
+          {categoryData.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t.stats.byCategory}</Text>
+              {categoryData.map((cat, index) => (
+                <CategoryCard
+                  key={index}
+                  category={cat.category}
+                  amount={cat.amount}
+                  percentage={cat.percentage}
+                  color={cat.color}
+                  currencySymbol={currencySymbol}
+                />
+              ))}
+            </View>
+          )}
 
-          <View style={{ height: 100 }} />
+          {/* Empty state */}
+          {!loading && monthlyData.length === 0 && (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="chart-line" size={64} color="rgba(253, 253, 253, 0.3)" />
+              <Text style={styles.emptyText}>{t.emptyStates.noStats.title}</Text>
+              <Text style={styles.emptySubtext}>
+                {t.emptyStates.noStats.subtitle}
+              </Text>
+            </View>
+          )}
+
+          <View style={{ height: 120 }} />
         </Animated.View>
       </ScrollView>
     </View>
@@ -537,48 +376,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
   },
   header: {
-    backgroundColor: '#1a1a1a',
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#fdfdfd',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: 'rgba(253, 253, 253, 0.6)',
-  },
-  exportButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#2a2a2a',
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginBottom: 20,
   },
   periodSelector: {
     flexDirection: 'row',
     backgroundColor: '#2a2a2a',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 4,
   },
   periodButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 10,
+    borderRadius: 10,
     alignItems: 'center',
   },
   periodButtonActive: {
@@ -587,7 +409,7 @@ const styles = StyleSheet.create({
   periodText: {
     fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(253, 253, 253, 0.6)',
+    color: 'rgba(253, 253, 253, 0.5)',
   },
   periodTextActive: {
     color: '#fff',
@@ -596,213 +418,95 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: 24,
+    paddingTop: 20,
   },
-  summaryContainer: {
+  statsGrid: {
     paddingHorizontal: 24,
+    gap: 16,
     marginBottom: 24,
   },
-  summaryCard: {
-    borderRadius: 20,
-    padding: 24,
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 12,
-  },
-  summaryTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  summaryStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  summaryItem: {
-    alignItems: 'center',
-  },
-  summaryLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 8,
-  },
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  summaryDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    marginBottom: 24,
-    gap: 8,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#2a2a2a',
-    alignItems: 'center',
-  },
-  tabActive: {
-    backgroundColor: '#733fea',
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(253, 253, 253, 0.6)',
-  },
-  tabTextActive: {
-    color: '#fff',
-  },
-  chartsContainer: {
-    paddingHorizontal: 24,
-  },
-  chartContainer: {
+  statCard: {
     backgroundColor: '#2a2a2a',
     borderRadius: 16,
     padding: 20,
-    marginBottom: 20,
   },
-  chartTitle: {
+  statCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  trendText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  statCardTitle: {
+    fontSize: 14,
+    color: 'rgba(253, 253, 253, 0.6)',
+    marginBottom: 8,
+  },
+  statCardValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fdfdfd',
+  },
+  chartCard: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 24,
+    marginBottom: 24,
+  },
+  chartCardTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#fdfdfd',
     marginBottom: 20,
   },
-  barsContainer: {
+  modernChart: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'flex-end',
-    height: 160,
+    height: 140,
   },
-  barWrapper: {
-    alignItems: 'center',
+  modernBarWrapper: {
     flex: 1,
+    alignItems: 'center',
   },
-  barContainer: {
-    height: 120,
+  modernBarContainer: {
+    height: 110,
+    width: 32,
     justifyContent: 'flex-end',
     marginBottom: 8,
   },
-  bar: {
-    width: 24,
-    borderRadius: 12,
-    minHeight: 4,
-  },
-  barLabel: {
-    fontSize: 12,
-    color: 'rgba(253, 253, 253, 0.6)',
-    marginBottom: 4,
-  },
-  barValue: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#fdfdfd',
-  },
-  donutContainer: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-  },
-  donutWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-  },
-  donutChart: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#733fea',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  donutCenter: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#2a2a2a',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  donutTotal: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fdfdfd',
-  },
-  donutLabel: {
-    fontSize: 12,
-    color: 'rgba(253, 253, 253, 0.6)',
-  },
-  donutLegend: {
-    flex: 1,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
-  },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  legendText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#fdfdfd',
-  },
-  legendValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fdfdfd',
-  },
-  lineContainer: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-  },
-  lineChart: {
-    height: 120,
-    position: 'relative',
-  },
-  lineGrid: {
-    position: 'absolute',
+  modernBar: {
     width: '100%',
-    height: '100%',
-    justifyContent: 'space-between',
+    borderRadius: 8,
+    minHeight: 8,
   },
-  gridLine: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  lineLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  lineLabel: {
-    fontSize: 12,
+  modernBarLabel: {
+    fontSize: 11,
     color: 'rgba(253, 253, 253, 0.6)',
+    fontWeight: '500',
   },
-  insightsContainer: {
+  section: {
     paddingHorizontal: 24,
-    marginTop: 8,
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
@@ -810,36 +514,52 @@ const styles = StyleSheet.create({
     color: '#fdfdfd',
     marginBottom: 16,
   },
-  insightCard: {
-    flexDirection: 'row',
+  categoryCard: {
     backgroundColor: '#2a2a2a',
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    alignItems: 'flex-start',
-    gap: 16,
   },
-  insightIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(115, 63, 234, 0.15)',
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  categoryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  insightContent: {
+  categoryInfo: {
     flex: 1,
   },
-  insightTitle: {
-    fontSize: 16,
+  categoryName: {
+    fontSize: 15,
     fontWeight: '600',
     color: '#fdfdfd',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  insightText: {
-    fontSize: 14,
-    color: 'rgba(253, 253, 253, 0.7)',
-    lineHeight: 20,
+  categoryAmount: {
+    fontSize: 13,
+    color: 'rgba(253, 253, 253, 0.6)',
+  },
+  categoryPercent: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fdfdfd',
+  },
+  categoryProgressBar: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  categoryProgressFill: {
+    height: '100%',
+    borderRadius: 3,
   },
   emptyState: {
     alignItems: 'center',
@@ -859,22 +579,5 @@ const styles = StyleSheet.create({
     color: 'rgba(253, 253, 253, 0.6)',
     textAlign: 'center',
     lineHeight: 22,
-  },
-  statCard: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 16,
-    padding: 24,
-    marginHorizontal: 24,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  statCardTitle: {
-    fontSize: 14,
-    color: 'rgba(253, 253, 253, 0.6)',
-    marginBottom: 8,
-  },
-  statCardValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
   },
 });

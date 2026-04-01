@@ -6,8 +6,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useI18n } from '../../src/i18n';
 
 export default function Login() {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,7 +48,7 @@ export default function Login() {
       
       router.replace('/(tabs)/dashboard');
     } catch (err: any) {
-      setError('Email ou mot de passe incorrect');
+      setError(t.auth.invalidCredentials);
     } finally {
       setLoading(false);
     }
@@ -71,8 +73,8 @@ export default function Login() {
             <View style={styles.iconContainer}>
               <MaterialCommunityIcons name="chart-line-variant" size={50} color="#fff" />
             </View>
-            <Text style={styles.title}>Welcome Back!</Text>
-            <Text style={styles.subtitle}>Sign in to continue</Text>
+            <Text style={styles.title}>{t.auth.welcomeBack}</Text>
+            <Text style={styles.subtitle}>{t.auth.signInToContinue}</Text>
           </Animated.View>
 
           <Animated.View 
@@ -91,7 +93,7 @@ export default function Login() {
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                placeholder="Email"
+                placeholder={t.auth.email}
                 placeholderTextColor="rgba(255,255,255,0.5)"
                 style={styles.input}
                 mode="flat"
@@ -109,7 +111,7 @@ export default function Login() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
-                placeholder="Password"
+                placeholder={t.auth.password}
                 placeholderTextColor="rgba(255,255,255,0.5)"
                 style={styles.input}
                 mode="flat"
@@ -144,19 +146,19 @@ export default function Login() {
               contentStyle={styles.buttonContent}
               labelStyle={styles.buttonLabel}
             >
-              Sign In
+              {t.auth.signIn}
             </Button>
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
+              <Text style={styles.dividerText}>{t.common.or}</Text>
               <View style={styles.dividerLine} />
             </View>
             
             <View style={styles.signupContainer}>
-              <Text style={styles.signupText}>Don't have an account? </Text>
+              <Text style={styles.signupText}>{t.auth.noAccount} </Text>
               <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-                <Text style={styles.signupLink}>Sign Up</Text>
+                <Text style={styles.signupLink}>{t.auth.signUp}</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
